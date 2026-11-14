@@ -61,20 +61,29 @@ Future<void> scheduleDailyReminders() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  tzdata.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation(localTimezone));
-
-  await notifications.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    ),
-  );
 
   final state = await GameState.load();
   await state.onNewDay();
-  await scheduleDailyReminders();
 
   runApp(TaskPetApp(state: state));
+
+  // Notifications run AFTER the app is on screen, so they can't block it.
+  try {
+    tzdata.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation(localTimezone));
+    await notifications.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+    );
+    await notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    await scheduleDailyReminders();
+  } catch (e) {
+    debugPrint('Notification setup failed: $e');
+  }
 }
 
 class TaskPetApp extends StatefulWidget {
