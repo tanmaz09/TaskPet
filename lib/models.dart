@@ -110,36 +110,73 @@ class GameState {
     return _dateStr(monday);
   }
 
-  /// Called on every app start. Handles week rollover and day rollover:
-  /// resets checkboxes, applies decay (or consumes a streak freeze).
-  Future<void> onNewDay() async {
+  static DateTime _parseDate(String s) {
+    final p = s.split('-');
+    return DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+  }
+
+  /// Whole calendar days from [a] to [b] (DST-safe).
+  static int _daysBetween(DateTime a, DateTime b) =>
+      DateTime.utc(b.year, b.month, b.day)
+          .difference(DateTime.utc(a.year, a.month, a.day))
+          .inDays;
+
+  /// Handles week rollover and day rollover: resets checkboxes and applies
+  /// one penalty (or one streak freeze) for EVERY missed day, not just one.
+  ///
+  /// Safe to call often (app start, resume, once a minute while open): it
+  /// does nothing when the date hasn't changed. Returns true if state changed.
+  ///
+  /// All state is changed before the first `await`, so two overlapping
+  /// calls can't double-apply a penalty.
+  Future<bool> onNewDay() async {
+    var changed = false;
+
     final monday = _mondayStr();
     if (weekStart != monday) {
       weekStart = monday;
       bossProgress = 0;
+      changed = true;
     }
 
     final today = _today();
     if (lastCheckDate == today) {
-      await save();
-      return;
+      if (changed) await save();
+      return changed;
     }
 
-    final yesterday = _today(offsetDays: -1);
-    if (tasks.isNotEmpty && lastPerfectDate != yesterday) {
-      if (freezes > 0) {
-        freezes -= 1; // streak freeze consumed automatically
-        energy = (energy - 10).clamp(0, 100);
-      } else {
-        streak = 0;
-        energy = (energy - 25).clamp(0, 100);
+    if (lastCheckDate.isNotEmpty) {
+      final gap = _daysBetween(_parseDate(lastCheckDate), DateTime.now());
+      if (gap < 0) {
+        // The phone's clock moved backwards. Don't punish or reset anything.
+        if (changed) await save();
+        return changed;
+      }
+      if (tasks.isNotEmpty) {
+        // Days strictly between the last check and today were never opened,
+        // so they were missed. The last-checked day itself counts as missed
+        // unless it was a perfect day.
+        var missed = gap - 1;
+        if (lastPerfectDate != lastCheckDate) missed += 1;
+        if (missed > 60) missed = 60;
+        for (var i = 0; i < missed; i++) {
+          if (streak > 0 && freezes > 0) {
+            freezes -= 1; // a freeze protects a streak that exists
+            energy = (energy - 10).clamp(0, 100);
+          } else {
+            streak = 0;
+            energy = (energy - 25).clamp(0, 100);
+          }
+        }
       }
     }
+
     for (final t in tasks) {
       t.done = false;
     }
     lastCheckDate = today;
     await save();
+    return true;
   }
 
   Future<TaskResult> completeTask(Task task) async {
