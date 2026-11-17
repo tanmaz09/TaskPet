@@ -10,7 +10,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.taskpet"
+    namespace = "com.tanmoy.taskpet"
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.taskpet"
+        applicationId = "com.tanmoy.taskpet"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
