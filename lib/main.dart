@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -7,11 +11,26 @@ import 'models.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 
-/// CHANGE THIS to your timezone (e.g. 'America/New_York', 'Europe/London').
-const String localTimezone = 'Asia/Dhaka';
-
 final FlutterLocalNotificationsPlugin notifications =
     FlutterLocalNotificationsPlugin();
+
+/// Uses the phone's own timezone. If the name isn't in the timezone
+/// database (some old Android IDs), falls back to any zone with the same
+/// current UTC offset so reminders still fire at the right local hour.
+Future<void> _configureLocalTimezone() async {
+  tzdata.initializeTimeZones();
+  try {
+    final name = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(name));
+  } catch (_) {
+    final offsetMs = DateTime.now().timeZoneOffset.inMilliseconds;
+    final match = tz.timeZoneDatabase.locations.values.firstWhere(
+      (l) => l.currentTimeZone.offset == offsetMs,
+      orElse: () => tz.UTC,
+    );
+    tz.setLocalLocation(match);
+  }
+}
 
 tz.TZDateTime _nextInstanceOf(int hour) {
   final now = tz.TZDateTime.now(tz.local);
@@ -69,8 +88,7 @@ Future<void> main() async {
 
   // Notifications run AFTER the app is on screen, so they can't block it.
   try {
-    tzdata.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation(localTimezone));
+    await _configureLocalTimezone();
     await notifications.initialize(
       const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -94,14 +112,36 @@ class TaskPetApp extends StatefulWidget {
   State<TaskPetApp> createState() => _TaskPetAppState();
 }
 
-class _TaskPetAppState extends State<TaskPetApp> {
+class _TaskPetAppState extends State<TaskPetApp> with WidgetsBindingObserver {
   bool? _onboarded;
+  Timer? _dayWatcher;
 
   @override
   void initState() {
     super.initState();
-    GameState.isOnboarded()
-        .then((v) => setState(() => _onboarded = v));
+    WidgetsBinding.instance.addObserver(this);
+    GameState.isOnboarded().then((v) => setState(() => _onboarded = v));
+    // Catches midnight while the app is open on screen.
+    _dayWatcher =
+        Timer.periodic(const Duration(minutes: 1), (_) => _checkNewDay());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dayWatcher?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkNewDay() async {
+    final changed = await widget.state.onNewDay();
+    if (changed && mounted) setState(() {});
+  }
+
+  // Catches the app coming back from the background on a new day.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    if (lifecycle == AppLifecycleState.resumed) _checkNewDay();
   }
 
   @override
