@@ -2,6 +2,7 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models.dart';
+import '../notifications.dart';
 import '../widgets/energy_orb.dart';
 import '../widgets/evolution_overlay.dart';
 
@@ -31,49 +32,151 @@ class _TasksPageState extends State<TasksPage> {
 
   Future<void> _addTask() async {
     final titleCtrl = TextEditingController();
-    final pointsCtrl = TextEditingController(text: '10');
+    var difficulty = 1;
     final result = await showDialog<(String, int)>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New daily task'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleCtrl,
-              autofocus: true,
-              decoration: const InputDecoration(
-                  labelText: 'Task (e.g. Read 20 min)'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('New daily task'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: titleCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                    labelText: 'Task (e.g. Read 20 min)'),
+              ),
+              const SizedBox(height: 18),
+              const Text('How hard is it?'),
+              const SizedBox(height: 8),
+              _DifficultyPicker(
+                value: difficulty,
+                onChanged: (v) => setLocal(() => difficulty = v),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Harder tasks feed your creature more.',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
             ),
-            TextField(
-              controller: pointsCtrl,
-              keyboardType: TextInputType.number,
-              decoration:
-                  const InputDecoration(labelText: 'Points (energy gained)'),
+            FilledButton(
+              onPressed: () {
+                final title = titleCtrl.text.trim();
+                if (title.isEmpty) return;
+                Navigator.pop(ctx, (title, difficulty));
+              },
+              child: const Text('Add'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final title = titleCtrl.text.trim();
-              if (title.isEmpty) return;
-              final points = int.tryParse(pointsCtrl.text.trim()) ?? 10;
-              Navigator.pop(ctx, (title, points));
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
     if (result != null) {
       await widget.state.addTask(result.$1, result.$2);
       widget.onChanged();
     }
+  }
+
+  Future<void> _editTask(Task task) async {
+    final titleCtrl = TextEditingController(text: task.title);
+    var difficulty = task.difficulty;
+    final result = await showDialog<(String, int)>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Edit task'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: titleCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'Task'),
+              ),
+              const SizedBox(height: 18),
+              const Text('Difficulty'),
+              const SizedBox(height: 8),
+              _DifficultyPicker(
+                value: difficulty,
+                enabled: !task.done,
+                onChanged: (v) => setLocal(() => difficulty = v),
+              ),
+              if (task.done) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Done today, so the difficulty is locked until tomorrow.',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final title = titleCtrl.text.trim();
+                if (title.isEmpty) return;
+                Navigator.pop(ctx, (title, difficulty));
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null) {
+      await widget.state.editTask(task, result.$1, result.$2);
+      widget.onChanged();
+    }
+  }
+
+  Future<void> _confirmRest() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🌙 Take today as a rest day?'),
+        content: const Text(
+          'Your streak and creature stay safe today, even if you finish '
+          'nothing.\n\n'
+          'You get one rest day per week. It does not count toward the '
+          'weekly boss, and reminders stay quiet for the rest of today.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Take rest day'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await widget.state.takeRestDay();
+    widget.onChanged();
+    try {
+      await scheduleDailyReminders(restToday: true);
+    } catch (e) {
+      debugPrint('Could not update reminders: $e');
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Rest well 🌙 Your streak is safe today.')),
+    );
   }
 
   /// [from] is the screen position of the task that was tapped; the energy
@@ -118,7 +221,7 @@ class _TasksPageState extends State<TasksPage> {
         builder: (ctx) => AlertDialog(
           title: const Text('⚔️ WEEKLY BOSS DEFEATED!'),
           content: const Text(
-            '7 perfect days in one week!\n\nReward: +1 🧊 streak freeze',
+            '6 perfect days in one week!\n\nReward: +1 🧊 streak freeze\n\nFinish all 7 days for a 🌟 golden feast.',
             style: TextStyle(fontSize: 18),
           ),
           actions: [
@@ -132,10 +235,80 @@ class _TasksPageState extends State<TasksPage> {
       if (!mounted) return;
     }
 
+    if (res.perfectWeek) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('🌟 PERFECT WEEK!'),
+          content: const Text(
+            'All 7 days perfect!\n\nYour creature enjoys a golden feast: '
+            'energy fully restored and a golden glow for two days.',
+            style: TextStyle(fontSize: 18),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Feast!'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('PERFECT DAY! 🎉 Your creature grows stronger.'),
         backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  Widget _restAndTips(GameState s) {
+    if (s.isRestToday) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: Colors.indigo.withOpacity(0.18),
+            border: Border.all(color: Colors.indigoAccent.withOpacity(0.35)),
+          ),
+          child: const Text(
+            '🌙 Rest day. Your streak is safe today. You can still finish '
+            'tasks if you feel like it.',
+            style: TextStyle(fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    final tips = <Widget>[];
+    if (s.canTakeRest) {
+      tips.add(Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          onPressed: _confirmRest,
+          icon: const Icon(Icons.bedtime_outlined, size: 18),
+          label: const Text('Take a rest day'),
+        ),
+      ));
+    }
+    if (!s.dayCanBeRanked) {
+      tips.add(const Text(
+        'Tip: a day needs at least 3 effort points to count for leaderboards '
+        '(Easy 1, Medium 2, Hard 3). Add a harder task or two.',
+        style: TextStyle(color: Colors.grey, fontSize: 12),
+      ));
+    }
+    if (tips.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: tips,
       ),
     );
   }
@@ -169,6 +342,7 @@ class _TasksPageState extends State<TasksPage> {
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       child: _StatsCard(state: s),
                     ),
+                    _restAndTips(s),
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.only(bottom: 80),
@@ -178,6 +352,7 @@ class _TasksPageState extends State<TasksPage> {
                           task: s.tasks[i],
                           index: i,
                           onCheck: (pos) => _onChecked(s.tasks[i], pos),
+                          onEdit: () => _editTask(s.tasks[i]),
                           onDelete: () async {
                             await s.deleteTask(s.tasks[i]);
                             widget.onChanged();
@@ -256,12 +431,14 @@ class _TaskTile extends StatefulWidget {
   final Task task;
   final int index;
   final void Function(Offset from) onCheck;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
   const _TaskTile({
     super.key,
     required this.task,
     required this.index,
     required this.onCheck,
+    required this.onEdit,
     required this.onDelete,
   });
 
@@ -333,6 +510,7 @@ class _TaskTileState extends State<_TaskTile>
           ),
           child: ListTile(
             onTap: task.done ? null : _handleTap,
+            onLongPress: widget.onEdit,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             leading: AnimatedScale(
@@ -360,7 +538,8 @@ class _TaskTileState extends State<_TaskTile>
             subtitle: task.done
                 ? const Text('Done — locked until tomorrow ✅',
                     style: TextStyle(fontSize: 12))
-                : Text('${task.points} pts · tap to complete',
+                : Text(
+                    '${task.difficultyEmoji} ${task.difficultyName} · tap to complete · hold to edit',
                     style: const TextStyle(fontSize: 12)),
             trailing: IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
@@ -370,6 +549,33 @@ class _TaskTileState extends State<_TaskTile>
           ),
         ),
       ),
+    );
+  }
+}
+
+
+class _DifficultyPicker extends StatelessWidget {
+  final int value;
+  final bool enabled;
+  final ValueChanged<int> onChanged;
+  const _DifficultyPicker({
+    required this.value,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (var i = 0; i < Task.tierNames.length; i++)
+          ChoiceChip(
+            label: Text('${Task.tierEmoji[i]} ${Task.tierNames[i]}'),
+            selected: value == i,
+            onSelected: enabled ? (_) => onChanged(i) : null,
+          ),
+      ],
     );
   }
 }
