@@ -20,6 +20,7 @@ class CreaturePainter extends CustomPainter {
   final bool hungry;
   final double glow; // 0..1 white aura (evolution scene)
   final bool showScene; // false = draw only the creature (evolution scene)
+  final bool golden; // golden feast: warm glow and rising sparkles
 
   CreaturePainter({
     required this.stage,
@@ -34,6 +35,7 @@ class CreaturePainter extends CustomPainter {
     this.hungry = false,
     this.glow = 0,
     this.showScene = true,
+    this.golden = false,
   });
 
   bool get starving => energy < 15;
@@ -90,6 +92,8 @@ class CreaturePainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 34),
       );
     }
+
+    if (golden) _drawGolden(canvas, cx, cy, h);
 
     // Aura when thriving
     if (thriving) {
@@ -281,6 +285,23 @@ class CreaturePainter extends CustomPainter {
     );
     tp.paint(c, off);
     c.restore();
+  }
+
+  void _drawGolden(Canvas c, double cx, double cy, double h) {
+    final pulse = 0.85 + 0.15 * math.sin(t * 4 * math.pi);
+    c.drawCircle(
+      Offset(cx, cy),
+      h * 0.30 * pulse,
+      Paint()
+        ..color = const Color(0xFFFFD54F).withOpacity(0.32)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30),
+    );
+    for (var i = 0; i < 8; i++) {
+      final phase = (t * 2 + i / 8.0) % 1.0;
+      final x = cx + math.cos(i * 0.9) * h * 0.26;
+      final y = cy + h * 0.12 - phase * h * 0.42;
+      _drawText(c, '✨', Offset(x, y), 12, math.sin(phase * math.pi));
+    }
   }
 
   void _drawHearts(Canvas c, double cx, double cy, double h) {
