@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -74,7 +75,12 @@ class StatsPage extends StatelessWidget {
     }
 
     const perfectColor = Color(0xFF2EC4A6);
+    const restColor = Color(0xFF4A4F8A);
     const noneColor = Color(0xFF2A2A2A);
+
+    final bossShown = math.min(s.bossProgress, GameState.bossTarget);
+    final bossDone = s.bossProgress >= GameState.bossTarget;
+    final weekDone = s.bossProgress >= GameState.perfectWeekTarget;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -100,11 +106,30 @@ class StatsPage extends StatelessWidget {
                         TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 Text(
-                    'Get 7 perfect days in one week to defeat the boss and earn +1 🧊 streak freeze.'),
+                    'Get ${GameState.bossTarget} perfect days in one week to defeat the boss and earn +1 🧊 streak freeze. '
+                    'Make it all ${GameState.perfectWeekTarget} for a 🌟 golden feast for your creature.'),
                 const SizedBox(height: 8),
-                LinearProgressIndicator(value: s.bossProgress / 7),
+                LinearProgressIndicator(
+                    value: bossShown / GameState.bossTarget),
                 const SizedBox(height: 4),
-                Text('${s.bossProgress}/7 this week'),
+                Text(bossDone
+                    ? '$bossShown/${GameState.bossTarget} this week · boss defeated ✅'
+                    : '$bossShown/${GameState.bossTarget} this week'),
+                if (bossDone) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    weekDone
+                        ? '🌟 Perfect week! Golden feast earned.'
+                        : 'One more perfect day this week for the 🌟 golden feast.',
+                    style: const TextStyle(color: Colors.amber),
+                  ),
+                ],
+                if (s.perfectWeeks > 0) ...[
+                  const SizedBox(height: 4),
+                  Text('🌟 Perfect weeks so far: ${s.perfectWeeks}',
+                      style:
+                          const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
               ],
             ),
           ),
@@ -135,6 +160,8 @@ class StatsPage extends StatelessWidget {
                                   final d = days[col * 7 + row];
                                   final isPerfect =
                                       d != null && s.perfectDates.contains(d);
+                                  final isRest =
+                                      d != null && s.restDates.contains(d);
                                   final isToday = d == todayStr;
                                   return Container(
                                     width: 16,
@@ -143,7 +170,7 @@ class StatsPage extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: isPerfect
                                           ? perfectColor
-                                          : noneColor,
+                                          : (isRest ? restColor : noneColor),
                                       borderRadius:
                                           BorderRadius.circular(3),
                                       border: isToday
@@ -161,7 +188,7 @@ class StatsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text('Each green square = a perfect day',
+                const Text('Green = a perfect day · purple = a rest day',
                     style: TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
