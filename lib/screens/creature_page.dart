@@ -161,6 +161,7 @@ class _CreaturePageState extends State<CreaturePage>
       look: _look.value,
       sleeping: sleeping,
       hungry: hungry,
+      golden: s.feastActive,
     );
   }
 
@@ -198,7 +199,7 @@ class _CreaturePageState extends State<CreaturePage>
                       child: AnimatedBuilder(
                         animation: _repaint,
                         builder: (_, __) => CustomPaint(
-                          painter: _painter(stageIndex, allDone),
+                          painter: _painter(stageIndex, allDone || s.isRestToday),
                         ),
                       ),
                     ),
@@ -262,12 +263,19 @@ class _CreaturePageState extends State<CreaturePage>
               const SizedBox(height: 12),
               Text('🧊 Streak freezes: ${s.freezes}/${GameState.maxFreezes}'),
               const SizedBox(height: 4),
-              Text('⚔️ Weekly boss: ${s.bossProgress}/7 perfect days'),
+              Text(
+                  '⚔️ Weekly boss: ${math.min(s.bossProgress, GameState.bossTarget)}/${GameState.bossTarget} perfect days (7 = 🌟 golden feast)'),
+              if (s.feastActive) ...[
+                const SizedBox(height: 4),
+                const Text('🌟 Golden feast: your creature is glowing!'),
+              ],
               const Divider(height: 24),
               Text(
-                allDone
-                    ? "✅ All tasks done today. Your creature is fed and happy!"
-                    : "⚠️ ${s.tasks.length - s.doneToday} task(s) unfinished. Your creature is waiting — completing tasks is the ONLY way to feed it.",
+                s.isRestToday && !allDone
+                    ? "🌙 Rest day. Your creature is resting with you, and your streak is safe."
+                    : allDone
+                        ? "✅ All tasks done today. Your creature is fed and happy!"
+                        : "⚠️ ${s.tasks.length - s.doneToday} task(s) unfinished. Your creature is waiting — completing tasks is the ONLY way to feed it.",
               ),
             ],
           ),
