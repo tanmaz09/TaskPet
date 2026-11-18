@@ -2,6 +2,8 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models.dart';
+import '../widgets/energy_orb.dart';
+import '../widgets/evolution_overlay.dart';
 
 class TasksPage extends StatefulWidget {
   final GameState state;
@@ -74,41 +76,41 @@ class _TasksPageState extends State<TasksPage> {
     }
   }
 
-  Future<void> _onChecked(Task task) async {
+  /// [from] is the screen position of the task that was tapped; the energy
+  /// orb flies from there to the Creature tab.
+  Future<void> _onChecked(Task task, Offset from) async {
     final stageBefore = widget.state.stage;
     final res = await widget.state.completeTask(task);
     final stageAfter = widget.state.stage;
     widget.onChanged();
+
+    if (!mounted) return;
+    flyEnergyOrb(context, from: from);
 
     if (!res.perfectDay) {
       HapticFeedback.selectionClick();
       return;
     }
 
-    _confetti.play();
     HapticFeedback.mediumImpact();
     SystemSound.play(SystemSoundType.alert);
 
+    // Let the orb land before the big moments start.
+    await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
     if (stageAfter != stageBefore) {
-      await showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('✨ EVOLUTION! ✨'),
-          content: Text(
-            'Your creature evolved into ${stageAfter.emoji} ${stageAfter.name}!',
-            style: const TextStyle(fontSize: 18),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Amazing!'),
-            ),
-          ],
-        ),
+      await showEvolution(
+        context,
+        fromStage: GameState.stages.indexOf(stageBefore),
+        toStage: GameState.stages.indexOf(stageAfter),
+        emoji: stageAfter.emoji,
+        name: stageAfter.name,
       );
+      if (!mounted) return;
     }
+
+    _confetti.play();
 
     if (res.bossDefeated) {
       await showDialog(
@@ -127,6 +129,7 @@ class _TasksPageState extends State<TasksPage> {
           ],
         ),
       );
+      if (!mounted) return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -174,7 +177,7 @@ class _TasksPageState extends State<TasksPage> {
                           key: ValueKey(s.tasks[i].id),
                           task: s.tasks[i],
                           index: i,
-                          onCheck: () => _onChecked(s.tasks[i]),
+                          onCheck: (pos) => _onChecked(s.tasks[i], pos),
                           onDelete: () async {
                             await s.deleteTask(s.tasks[i]);
                             widget.onChanged();
@@ -252,7 +255,7 @@ class _StatsCard extends StatelessWidget {
 class _TaskTile extends StatefulWidget {
   final Task task;
   final int index;
-  final VoidCallback onCheck;
+  final void Function(Offset from) onCheck;
   final VoidCallback onDelete;
   const _TaskTile({
     super.key,
@@ -288,6 +291,15 @@ class _TaskTileState extends State<_TaskTile>
     super.dispose();
   }
 
+  void _handleTap() {
+    // Where the check icon sits on screen, so the energy orb can start there.
+    final box = context.findRenderObject() as RenderBox?;
+    final from = (box != null && box.hasSize)
+        ? box.localToGlobal(Offset(44, box.size.height / 2))
+        : const Offset(60, 300);
+    widget.onCheck(from);
+  }
+
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
@@ -320,7 +332,7 @@ class _TaskTileState extends State<_TaskTile>
             ),
           ),
           child: ListTile(
-            onTap: task.done ? null : widget.onCheck,
+            onTap: task.done ? null : _handleTap,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             leading: AnimatedScale(
