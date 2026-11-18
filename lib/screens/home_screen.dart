@@ -38,14 +38,57 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final pages = [
       TasksPage(state: widget.state, onChanged: refresh),
-      CreaturePage(state: widget.state),
+      // Tell the creature page when it is on screen so it can rest otherwise.
+      CreaturePage(state: widget.state, active: _tab == 1),
       StatsPage(state: widget.state, onChanged: refresh),
     ];
 
+    final scaffold = Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: const Text('TaskPet'),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF12544C).withOpacity(0.85),
+                const Color(0xFF0A2E2E).withOpacity(0.4),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: IndexedStack(index: _tab, children: pages),
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          backgroundColor: Colors.white.withOpacity(0.04),
+          indicatorColor: Colors.teal.withOpacity(0.25),
+          labelTextStyle: MaterialStateProperty.all(
+            const TextStyle(fontSize: 12),
+          ),
+        ),
+        child: NavigationBar(
+          elevation: 0,
+          selectedIndex: _tab,
+          onDestinationSelected: (i) => setState(() => _tab = i),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.checklist), label: 'Tasks'),
+            NavigationDestination(icon: Icon(Icons.pets), label: 'Creature'),
+            NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
+          ],
+        ),
+      ),
+    );
+
+    // The drifting background repaints every frame; passing the scaffold as
+    // `child` means only the gradient is rebuilt, not the whole screen.
     return AnimatedBuilder(
       animation: _bg,
-      builder: (context, _) {
-        // Slowly drifting ambient gradient behind all pages
+      child: scaffold,
+      builder: (context, child) {
         final dx = 0.5 + 0.3 * _bg.value;
         return Container(
           decoration: BoxDecoration(
@@ -59,48 +102,7 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              title: const Text('TaskPet'),
-              centerTitle: true,
-              flexibleSpace: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF12544C).withOpacity(0.85),
-                      const Color(0xFF0A2E2E).withOpacity(0.4),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            body: IndexedStack(index: _tab, children: pages),
-            bottomNavigationBar: NavigationBarTheme(
-              data: NavigationBarThemeData(
-                backgroundColor: Colors.white.withOpacity(0.04),
-                indicatorColor: Colors.teal.withOpacity(0.25),
-                labelTextStyle: MaterialStateProperty.all(
-                  const TextStyle(fontSize: 12),
-                ),
-              ),
-              child: NavigationBar(
-                elevation: 0,
-                selectedIndex: _tab,
-                onDestinationSelected: (i) => setState(() => _tab = i),
-                destinations: const [
-                  NavigationDestination(
-                      icon: Icon(Icons.checklist), label: 'Tasks'),
-                  NavigationDestination(
-                      icon: Icon(Icons.pets), label: 'Creature'),
-                  NavigationDestination(
-                      icon: Icon(Icons.bar_chart), label: 'Stats'),
-                ],
-              ),
-            ),
-          ),
+          child: child,
         );
       },
     );
