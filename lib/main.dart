@@ -7,6 +7,7 @@ import 'models.dart';
 import 'notifications.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'sync_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,9 @@ Future<void> main() async {
   await state.onNewDay();
 
   runApp(TaskPetApp(state: state));
+
+  // Online profile (does nothing until Firebase is configured).
+  unawaited(SyncService.instance.start(state));
 
   // Notifications run AFTER the app is on screen, so they can't block it.
   await setUpNotifications(restToday: state.isRestToday);
@@ -58,6 +62,10 @@ class _TaskPetAppState extends State<TaskPetApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     if (lifecycle == AppLifecycleState.resumed) _checkNewDay();
+    // Push any unsent changes before the app goes to the background.
+    if (lifecycle == AppLifecycleState.paused) {
+      SyncService.instance.pushIfChanged();
+    }
   }
 
   @override
