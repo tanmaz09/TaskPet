@@ -18,7 +18,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ('⚔️', 'The rules',
         'Finish ALL your tasks for a perfect day. Perfect days evolve your creature, build your streak, and defeat the weekly boss. Miss a day and it loses energy — unless a 🧊 streak freeze saves you.'),
     ('🔒', 'No cheats',
-        "Checked tasks lock until tomorrow. No store, no skipping, no way to feed your creature except doing the work. Your data never leaves your device."),
+        "Checked tasks lock until tomorrow. No store, no skipping, no way to feed your creature except doing the work. Your tasks stay on your phone. If you add friends, they only see your name and your pet's stats."),
   ];
 
   @override
