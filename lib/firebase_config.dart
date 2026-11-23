@@ -8,8 +8,8 @@
 /// talk to, so it is fine to keep it in the repo. What protects your data is
 /// the Firestore security rules.
 class FirebaseConfig {
-  static const String projectId = 'YOUR_PROJECT_ID';
-  static const String apiKey = 'YOUR_WEB_API_KEY';
+  static const String projectId = 'taskpet-b8f3b';
+  static const String apiKey = 'AIzaSyAJYwW7AG3YabMYm7OlO8FNEEW5FSTSPLM';
 
   static bool get isConfigured =>
       !projectId.startsWith('YOUR_') && !apiKey.startsWith('YOUR_');
