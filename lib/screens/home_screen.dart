@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models.dart';
 import 'creature_page.dart';
+import 'friends_page.dart';
 import 'stats_page.dart';
 import 'tasks_page.dart';
 
@@ -40,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen>
       TasksPage(state: widget.state, onChanged: refresh),
       // Tell the creature page when it is on screen so it can rest otherwise.
       CreaturePage(state: widget.state, active: _tab == 1),
+      FriendsPage(state: widget.state, active: _tab == 2),
       StatsPage(state: widget.state, onChanged: refresh),
     ];
 
@@ -77,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen>
           destinations: const [
             NavigationDestination(icon: Icon(Icons.checklist), label: 'Tasks'),
             NavigationDestination(icon: Icon(Icons.pets), label: 'Creature'),
+            NavigationDestination(icon: Icon(Icons.group), label: 'Friends'),
             NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Stats'),
           ],
         ),
