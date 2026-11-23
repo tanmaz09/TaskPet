@@ -13,9 +13,10 @@ void flyEnergyOrb(BuildContext context, {required Offset from, Offset? to}) {
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
 
-  // The Creature tab is the middle of the three bottom-bar items.
+  // The Creature tab is the 2nd of the 4 equal bottom-bar items, so its
+  // centre sits 3/8 of the way across the screen.
   final target = to ??
-      Offset(media.size.width / 2,
+      Offset(media.size.width * 3 / 8,
           media.size.height - media.viewPadding.bottom - 52);
 
   late OverlayEntry entry;
