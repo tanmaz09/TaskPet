@@ -4,6 +4,7 @@ import 'creature_page.dart';
 import 'friends_page.dart';
 import 'stats_page.dart';
 import 'tasks_page.dart';
+import '../notifications.dart';
 
 class HomeScreen extends StatefulWidget {
   final GameState state;
@@ -25,6 +26,9 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 9),
     )..repeat();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) askForNotificationsOnce(context);
+    });
   }
 
   @override
