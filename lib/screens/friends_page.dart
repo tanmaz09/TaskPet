@@ -214,24 +214,38 @@ class _FriendsPageState extends State<FriendsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
+        return ValueListenableBuilder<bool>(
       valueListenable: SyncService.instance.enabled,
-      builder: (context, on, _) => on ? _onlineBody() : _offBody(),
+      builder: (context, on, _) =>
+          (on || !FirebaseConfig.isConfigured) ? _onlineBody() : _offBody(),
     );
   }
 
-  /// Shown after the online profile was deleted.
+    /// Shown until the user opts in, and again after the online profile is
+  /// deleted.
   Widget _offBody() {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Text('👫', style: TextStyle(fontSize: 56)),
+            const SizedBox(height: 12),
             const Text(
-              '🌙 Online features are off.\n\nYour pet and tasks are still saved on this phone. Turn them back on to get a new friend code and add friends again.',
+              'Play with friends',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Online features are optional and off by default. Turn them on '
+              'to get a friend code, see your friends\' pets and compete on a '
+              'weekly leaderboard.\n\n'
+              'Friends you accept can see your name and your pet\'s stats '
+              '(stage, energy, streak, perfect days). Your tasks never leave '
+              'this phone. You can delete your online profile any time.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 15),
             ),
             const SizedBox(height: 20),
             FilledButton(
@@ -245,7 +259,7 @@ class _FriendsPageState extends State<FriendsPage> {
                   _refreshIfStale();
                 }
               },
-              child: const Text('Turn online features on'),
+              child: const Text('Turn on online features'),
             ),
           ],
         ),
