@@ -35,10 +35,10 @@ class SyncService {
 
   final ValueNotifier<SyncState> status = ValueNotifier(SyncState.off);
 
-  /// False after the online profile was deleted, until the user turns online
-  /// features back on. Nothing is sent to the server while it is false.
-  final ValueNotifier<bool> enabled = ValueNotifier(true);
-
+    /// Online features are opt-in. This stays false until the user turns them
+  /// on (and again after the online profile is deleted). Nothing is sent to
+  /// the server, and no anonymous account is created, while it is false.
+  final ValueNotifier<bool> enabled = ValueNotifier(false);
   /// Set briefly while an account deletion is running, so a sync can't
   /// recreate the profile half-way through.
   bool suspended = false;
@@ -61,7 +61,7 @@ class SyncService {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    enabled.value = prefs.getBool(_kEnabled) ?? true;
+    enabled.value = prefs.getBool(_kEnabled) ?? false;
     if (!enabled.value) {
       status.value = SyncState.off;
       return;
