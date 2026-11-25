@@ -1,14 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 final FlutterLocalNotificationsPlugin notifications =
     FlutterLocalNotificationsPlugin();
+
 final Completer<void> _notificationsReady = Completer<void>();
 
 /// Uses the phone's own timezone. If the name isn't in the timezone
@@ -95,6 +97,7 @@ Future<void> setUpNotifications({required bool restToday}) async {
     if (!_notificationsReady.isCompleted) _notificationsReady.complete();
   }
 }
+
 /// Explains why TaskPet sends reminders, then asks for permission. Shown at
 /// most once, and never if notifications are already allowed.
 Future<void> askForNotificationsOnce(BuildContext context) async {
@@ -119,7 +122,9 @@ Future<void> askForNotificationsOnce(BuildContext context) async {
       title: const Text('🔔 Gentle reminders?'),
       content: const Text(
         'TaskPet can remind you at 9 AM and 9 PM to finish your tasks. '
-        'That is all it sends: no ads, no spam. On rest days it stays quiet.',
+        'That is all it sends: no ads, no spam. On rest days it stays quiet.\n\n'
+        'Tip: if reminders ever arrive late, set TaskPet to "Unrestricted" '
+        'in your phone\'s battery settings.',
       ),
       actions: [
         TextButton(
@@ -141,7 +146,7 @@ Future<void> askForNotificationsOnce(BuildContext context) async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-            'No problem. You can turn reminders on later in the phone\'s '
+            "No problem. You can turn reminders on later in the phone's "
             'app settings.'),
       ),
     );
