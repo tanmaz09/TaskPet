@@ -46,6 +46,11 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      # Builds the launcher icons (normal, adaptive and themed) from the
+      # images in assets/icon/ so they don't have to be committed.
+      - name: Generate app icons
+        run: dart run flutter_launcher_icons
+
       # The run number becomes the Android versionCode, so every build is
       # higher than the last (Play rejects uploads that reuse a versionCode).
       - name: Build release APK
