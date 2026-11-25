@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="TaskPetLaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">@drawable/taskpet_splash</item>
-        <item name="android:windowSplashScreenBackground">#0B3A38</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/taskpet_splash_logo</item>
-    </style>
-</resources>
